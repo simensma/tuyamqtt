@@ -7,7 +7,6 @@ from os import path
 """
 TODO:
 - what about the heartbeat; now state call
-- Dockerfile
 """
 
 class TuyaMQTT:
@@ -148,7 +147,11 @@ class TuyaMQTT:
             except:
                 pass
             #     data = d.online()
-            self.mqtt_client.publish("%s/availability" % key, availability)                       
+            self.mqtt_client.publish("%s/availability" % key, availability)  
+
+            #as dict grows not all states might be checked when a command comes in   
+            while self.mainWait:
+                time.sleep(self.delay)                 
 
 
     def main_loop(self):
