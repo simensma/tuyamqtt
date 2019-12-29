@@ -1,5 +1,5 @@
 [Unit]
-Description=Smart Meter MQTT
+Description=Tuya MQTT
 After=network.target
 
 [Service]
