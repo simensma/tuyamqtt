@@ -102,3 +102,7 @@ switch:
     availability_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/1/availability"
 ```
 - Note: availability only works for devices known by TuyaMQTT.
+
+TODO
+===================
+- 

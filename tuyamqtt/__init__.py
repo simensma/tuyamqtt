@@ -44,6 +44,12 @@ class TuyaMQTT:
             return False    
         return payload
 
+    def bool_payload(self, boolvalue):
+
+        if boolvalue:
+            return self.config['General']['payload_on']
+        return self.config['General']['payload_off']
+
 
     def write_entity(self):
 
@@ -89,7 +95,7 @@ class TuyaMQTT:
 
 
     def on_message(self, client, userdata, message):                   
-                
+
         if message.topic[-7:] != 'command':
             self.mainWait = False
             return        
@@ -103,30 +109,29 @@ class TuyaMQTT:
         key = self.add_entity_dict(message.topic, message.retain)        
         entity = self.dictOfEntities[key]        
 
-        try:
-            d = pytuya.OutletDevice(entity['id'], entity['ip'], entity['localkey'])
-            
-            if entity['protocol'] == '3.3':
-                d.set_version(3.3) 
-        
-            payload = self.payload_bool(message.payload)       
-            d.set_status(payload, entity['dps'])
 
-            data = d.status()
-            self.mqtt_client.publish("%s/state" % key, data['dps'][entity['dps']])
-            self.dictOfEntities[key]['value'] = data['dps'][entity['dps']]
-            #close the connection
-            del d
-        except:
-            pass
+        d = pytuya.OutletDevice(entity['id'], entity['ip'], entity['localkey'])
+        
+        if entity['protocol'] == '3.3':
+            d.set_version(3.3) 
+    
+        payload = self.payload_bool(message.payload)       
+        data = d.set_status(payload, entity['dps'])       
+        del d
+    
+        payload = self.bool_payload(data['dps'][entity['dps']])
+        print(payload,"pub state")
+        self.mqtt_client.publish("%s/state" % key, payload)
+        self.dictOfEntities[key]['value'] = payload       
 
         self.mainWait = False
+        
 
     def run_states(self):
 
         for key,entity in self.dictOfEntities.items():
 
-            availability = 'offline'
+            availability = self.config['General']['availability_offline']
 
             try:
                 d = pytuya.OutletDevice(entity['id'], entity['ip'], entity['localkey'])
@@ -134,13 +139,14 @@ class TuyaMQTT:
                 if entity['protocol'] == '3.3':
                     d.set_version(3.3)
 
-                availability = 'online'
+                availability = self.config['General']['availability_online']
                 
                 data = d.status()
-                if self.dictOfEntities[key]['value'] != data['dps'][entity['dps']]:
+                payload = self.bool_payload(data['dps'][entity['dps']])
+                if self.dictOfEntities[key]['value'] != payload:
                     
-                    self.mqtt_client.publish("%s/state" % key, data['dps'][entity['dps']])
-                    self.dictOfEntities[key]['value'] = data['dps'][entity['dps']]
+                    self.mqtt_client.publish("%s/state" % key, payload)
+                    self.dictOfEntities[key]['value'] = payload
 
                 #close the connection
                 del d
