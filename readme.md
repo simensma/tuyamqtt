@@ -70,15 +70,38 @@ tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/availability
 
 MQTT state
 --------------
-Return values: `true`, `false`
+State payload values can be set in tuyamqtt.conf
+
+- Default values: `ON`, `OFF`
 
 MQTT command
 --------------
-Valid values are `true`, `false`, `ON`, `OFF`, `1`, `0`
+Valid values are `true`, `ON`, `1`, `false`, `OFF`, `0`
 
 MQTT availability
 --------------
-Return values: `online`, `offline`.
+Availability payload values can be set in tuyamqtt.conf
+
+- Default values: `online`, `offline`.
+
+
+tuyamqtt.conf
+==============
+```
+[General]
+entity_file: ./config/entities.json
+topic: tuya
+payload_on: ON
+payload_off: OFF
+availability_online: online
+availability_offline: offline
+
+[MQTT]
+user: myusername
+pass: mypassword
+host: 192.168.1.14
+port: 1883
+```
 
 
 Home Assistant Example
@@ -105,4 +128,17 @@ switch:
 
 TODO
 ===================
-- 
+- check config values
+- remove entities after x fails?
+- retry call x times?
+- device config via topic is rather crude, also causes redundant calls for state and avail 
+  - simple interface?
+  - file / sqlite ?
+- all tuya actions are done in same thread, split up: 
+  - state updates
+  - avail updates
+- pytuya is a mess, clean up / rewrite?
+
+License
+====================
+Free to use, copy, modify, what ever you like.

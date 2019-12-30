@@ -3,11 +3,54 @@ import paho.mqtt.client as mqtt
 import json
 import pythontuya.pytuya as pytuya
 from os import path
+from threading import Thread
 
 """
 TODO:
 - what about the heartbeat; now state call
 """
+class TuyaMQTTStatus(Thread):
+    def __init__(self, key, entity, current_value, mqtt_client, config):
+        ''' Constructor. '''
+ 
+        Thread.__init__(self)
+        self.key = key
+        self.entity = entity
+        self.current_value = current_value
+        self.mqtt_client = mqtt_client
+        self.config = config
+ 
+    def bool_payload(self, boolvalue):
+
+        if boolvalue:
+            return self.config['General']['payload_on']
+        return self.config['General']['payload_off']
+ 
+    def run(self):
+        # print ("run thread", self.key, self.entity)
+
+        try:
+            d = pytuya.OutletDevice(self.entity['id'], self.entity['ip'], self.entity['localkey'])
+
+            if self.entity['protocol'] == '3.3':
+                d.set_version(3.3)
+
+            # availability = self.config['General']['availability_online']
+            
+            data = d.status()
+
+            # print ('status ',entity ,data)
+            payload = self.bool_payload(data['dps'][self.entity['dps']])
+            if self.current_value != payload:
+                
+                self.mqtt_client.publish("%s/state" % self.key, payload)
+                self.current_value = payload
+
+            #close the connection
+            del d
+        except Exception as ex:
+            print(ex, ' for ', self.getName())
+            pass
 
 class TuyaMQTT:
 
@@ -44,6 +87,7 @@ class TuyaMQTT:
             return False    
         return payload
 
+
     def bool_payload(self, boolvalue):
 
         if boolvalue:
@@ -57,7 +101,8 @@ class TuyaMQTT:
             with open(self.entities_file, 'w') as fp:
                 json.dump(self.dictOfEntities, fp, indent=4)
         except:
-            print("%s not writable" % self.entities_file)        
+            print("%s not writable" % self.entities_file)  
+
 
     def read_entity(self):
 
@@ -96,13 +141,15 @@ class TuyaMQTT:
 
     def on_message(self, client, userdata, message):                   
 
+        print("message received  ",str(message.payload.decode("utf-8")),\
+            "topic",message.topic,"retained ",message.retain)
         if message.topic[-7:] != 'command':
             self.mainWait = False
             return        
         self.mainWait = True
 
-        print("message received  ",str(message.payload.decode("utf-8")),\
-            "topic",message.topic,"retained ",message.retain)
+        # print("message received  ",str(message.payload.decode("utf-8")),\
+        #     "topic",message.topic,"retained ",message.retain)
         # if message.retain==1:
         #     print("This is a retained message")  
         
@@ -120,7 +167,7 @@ class TuyaMQTT:
         del d
     
         payload = self.bool_payload(data['dps'][entity['dps']])
-        print(payload,"pub state")
+        # print(payload,"pub state")
         self.mqtt_client.publish("%s/state" % key, payload)
         self.dictOfEntities[key]['value'] = payload       
 
@@ -129,35 +176,49 @@ class TuyaMQTT:
 
     def run_states(self):
 
+        tpool = []
         for key,entity in self.dictOfEntities.items():
 
             availability = self.config['General']['availability_offline']
 
-            try:
-                d = pytuya.OutletDevice(entity['id'], entity['ip'], entity['localkey'])
+            myThreadOb1 = TuyaMQTTStatus(key, entity, self.dictOfEntities[key]['value'], self.mqtt_client, self.config)
+            myThreadOb1.setName(key)
+            myThreadOb1.start()
+            tpool.append(myThreadOb1)
+            
+            
+            # try:
+            #     d = pytuya.OutletDevice(entity['id'], entity['ip'], entity['localkey'])
 
-                if entity['protocol'] == '3.3':
-                    d.set_version(3.3)
+            #     if entity['protocol'] == '3.3':
+            #         d.set_version(3.3)
 
-                availability = self.config['General']['availability_online']
+            #     availability = self.config['General']['availability_online']
                 
-                data = d.status()
-                payload = self.bool_payload(data['dps'][entity['dps']])
-                if self.dictOfEntities[key]['value'] != payload:
-                    
-                    self.mqtt_client.publish("%s/state" % key, payload)
-                    self.dictOfEntities[key]['value'] = payload
+            #     data = d.status()
 
-                #close the connection
-                del d
-            except:
-                pass
-            #     data = d.online()
-            self.mqtt_client.publish("%s/availability" % key, availability)  
+            #     # print ('status ',entity ,data)
+            #     payload = self.bool_payload(data['dps'][entity['dps']])
+            #     if self.dictOfEntities[key]['value'] != payload:
+                    
+            #         self.mqtt_client.publish("%s/state" % key, payload)
+            #         self.dictOfEntities[key]['value'] = payload
+
+            #     #close the connection
+            #     del d
+            # except Exception as ex:
+            #     print(ex, 'for', entity)
+            #     pass
+            #     data = d.availability()
+            # self.mqtt_client.publish("%s/availability" % key, availability)  
 
             #as dict grows not all states might be checked when a command comes in   
             while self.mainWait:
-                time.sleep(self.delay)                 
+                time.sleep(self.delay)        
+
+        for th in tpool:
+            th.join()
+                     
 
 
     def main_loop(self):
