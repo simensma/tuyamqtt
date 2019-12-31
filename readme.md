@@ -131,13 +131,12 @@ TODO
 - check config values
 - remove entities after x fails?
 - retry call x times?
-- device config via topic is rather crude, also causes redundant calls for state and avail 
+- device config via topic is rather crude
   - simple interface?
   - file / sqlite ?
-- all tuya actions are done in same thread, split up: 
-  - state updates
-  - avail updates
 - pytuya is a mess, clean up / rewrite?
+- save entities every 5 min
+- bug: set state on multi button device sometimes won't go thru 
 
 License
 ====================
