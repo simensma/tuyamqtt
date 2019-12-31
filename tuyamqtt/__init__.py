@@ -33,7 +33,7 @@ class TuyaMQTTStatus(Thread):
                 d.set_version(3.3)
             
             data = d.status()
-
+            del d
             changed = False
             for dps_key, dps_item in data['dps'].items():
                 if dps_key in self.parent.dictOfEntities[self.key]['dps'] and self.parent.dictOfEntities[self.key]['dps'][dps_key] != dps_item:
@@ -45,7 +45,7 @@ class TuyaMQTTStatus(Thread):
                 self.parent.mqtt_client.publish("%s/attr" % (self.key),  json.dumps(data['dps']))
 
             availability = self.parent.config['General']['availability_online']
-            del d
+            
         except Exception as ex:
             print(ex, ' status for ', self.key)
             pass
@@ -105,18 +105,18 @@ class TuyaMQTT:
         self.config = config
 
         self.entities_file = config['General']['entity_file']
-        
         self.mqtt_topic = config['General']['topic']
+
+
+    def mqtt_connect(self):  
+        
         self.mqtt_client = mqtt.Client()
         self.mqtt_client.enable_logger()
-        self.mqtt_client.username_pw_set(config['MQTT']['user'], config['MQTT']['pass'])
-        self.mqtt_client.connect(config['MQTT']['host'], int(config['MQTT']['port']), 60)
+        self.mqtt_client.username_pw_set(self.config['MQTT']['user'], self.config['MQTT']['pass'])
+        self.mqtt_client.connect(self.config['MQTT']['host'], int(self.config['MQTT']['port']), 60)
         self.mqtt_client.on_connect = self.on_connect
         self.mqtt_client.loop_start()   
-        self.mqtt_client.on_message = self.on_message
-
-        self.read_entity()
-        self.run_states()
+        self.mqtt_client.on_message = self.on_message        
 
 
     def payload_bool(self, payload):
@@ -215,21 +215,31 @@ class TuyaMQTT:
         """
         primary loop to send / receive from tuya devices
         """
-        runStates = False
-        runAvailability = False
+        #quick and dirty
+        time.sleep(10)
+        self.mqtt_connect()
+        self.read_entity()
+        self.run_states()
+
+        time_run_states = 0
+        time_run_availability = 0
+        run_availability = False
+        time_run_save = 0
         
         while True:                       
 
-            if round(time.time())%15 == 0 and not runAvailability:               
-                runAvailability = True
-            elif round(time.time())%15 != 0:
-                runAvailability = False
-
-            if round(time.time())%5 == 0 and runStates:                   
-                self.run_states(runAvailability)
-                runStates = False
-            elif round(time.time())%5 != 0:
-                runStates = True            
+            if time.time() > time_run_availability:               
+                time_run_availability = time.time()+15
+                run_availability = True
+       
+            if time.time() > time_run_states:                   
+                self.run_states(run_availability)
+                time_run_states = time.time()+5
+                run_availability = False
+          
+            if time.time() > time_run_save:
+                self.write_entity()
+                time_run_save = time.time()+300
 
             time.sleep(self.delay)            
 

@@ -135,8 +135,8 @@ TODO
   - simple interface?
   - file / sqlite ?
 - pytuya is a mess, clean up / rewrite?
-- save entities every 5 min
-- bug: set state on multi button device sometimes won't go thru 
+- bug: set state on multi button device sometimes won't go thru due to connection issues
+- handle mqtt connection correctly (try/except and reconnect on fail)
 
 License
 ====================
