@@ -7,6 +7,9 @@ Quick Example
 -----------
 ```
 tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/1/state
+tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/1/command
+tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/availability
+tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/attr
 ```
 
 Installation 
@@ -65,12 +68,13 @@ MQTT Topics
 ```
 tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/state
 tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/command
-tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/availability
+tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/attr
+tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/availability
 ```
 
 MQTT state
 --------------
-State payload values can be set in tuyamqtt.conf
+State payload values can be set in tuyamqtt.conf. Updates on command, or on state change on device (5 second polling)
 
 - Default values: `ON`, `OFF`
 
@@ -78,9 +82,13 @@ MQTT command
 --------------
 Valid values are `true`, `ON`, `1`, `false`, `OFF`, `0`
 
+MQTT attributes
+--------------
+Returns all device attributes. Updates on command, or on state change on device (5 second polling)
+
 MQTT availability
 --------------
-Availability payload values can be set in tuyamqtt.conf
+Availability payload values can be set in tuyamqtt.conf. Updates every 15 seconds. 
 
 - Default values: `online`, `offline`.
 
@@ -130,13 +138,10 @@ TODO
 ===================
 - check config values
 - remove entities after x fails?
-- retry call x times?
 - device config via topic is rather crude
   - simple interface?
   - file / sqlite ?
 - pytuya is a mess, clean up / rewrite?
-- bug: set state on multi button device sometimes won't go thru due to connection issues
-- handle mqtt connection correctly (try/except and reconnect on fail)
 
 License
 ====================
