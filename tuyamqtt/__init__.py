@@ -122,7 +122,7 @@ class TuyaMQTTEntity(Thread):
             if not data:
                 self.status()
                 return
-        
+       
             for dps_key, dps_item in data['dps'].items():
                 if publish:
                     self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  self.bool_payload(dps_item))   
@@ -148,6 +148,7 @@ class TuyaMQTTEntity(Thread):
 
             self.parent.set_entity_dps_item(self.key, dps_item, payload) 
             self.status()
+
         except Exception as ex:
             print(ex, 'set_status for', self.key, data)
 
@@ -172,8 +173,8 @@ class TuyaMQTTEntity(Thread):
 
             if time.time() > time_run_availability:               
                 time_run_availability = time.time()+15               
-                self.mqtt_client.publish("%s/availability" % self.key, self.bool_availability(self.availability))  
-
+                self.mqtt_client.publish("%s/availability" % self.key, self.bool_availability(self.availability))                
+      
             if time.time() > time_unset_reset: 
                 time_unset_reset = time.time()+60                     
                 self.needs_reset = False
