@@ -150,7 +150,7 @@ class TuyaMQTTEntity(Thread):
             self.status()
 
         except Exception as ex:
-            print(ex, 'set_status for', self.key, data)
+            print(ex, 'set_status for', self.key)
 
 
     def run(self):
