@@ -5,11 +5,18 @@ import pythontuya.pytuya as pytuya
 from os import path
 from threading import Thread
 
-import concurrent.futures
-"""
-TODO:
-- what about the heartbeat; now state call
-"""
+def connack_string(state):
+
+    states = [
+        'Connection successful',
+        'Connection refused - incorrect protocol version',
+        'Connection refused - invalid client identifier',
+        'Connection refused - server unavailable',
+        'Connection refused - bad username or password',
+        'Connection refused - not authorised'
+    ]
+    return states[state]
+
 class TuyaMQTTEntity(Thread):
 
     delay = 0.1
@@ -23,7 +30,7 @@ class TuyaMQTTEntity(Thread):
         self.parent = parent
         self.config = self.parent.config
         self.tuya_connected = False
-        self.tuya_connection = None
+        self.tuya = None
         self.needs_reset = False
         self.mqtt_connected = False
 
@@ -39,17 +46,17 @@ class TuyaMQTTEntity(Thread):
             self.mqtt_client.loop_start()   
             self.mqtt_client.on_message = self.on_message
         except Exception as ex:
-            print('Failed to connect to MQTT Broker')
+            print('Failed to connect to MQTT Broker', ex)
             self.mqtt_connected = False
 
 
     def tuya_connect(self):
         
         try:
-            self.tuya_connection = pytuya.OutletDevice(self.entity['id'], self.entity['ip'], self.entity['localkey'])
+            self.tuya = pytuya.Device(self.entity['id'], self.entity['ip'], self.entity['localkey'])
 
             if self.entity['protocol'] == '3.3':
-                self.tuya_connection.set_version(3.3)
+                self.tuya.set_version(3.3)
             
             self.availability = True
             self.tuya_connected = True
@@ -58,12 +65,11 @@ class TuyaMQTTEntity(Thread):
             print(ex, 'for', self.key)
             self.availability = False
             self.tuya_connected = False
-            pass    
-
+        
    
     def tuya_reset(self):
 
-        del self.tuya_connection
+        del self.tuya
         self.tuya_connect()
         time.sleep(1)
 
@@ -111,15 +117,9 @@ class TuyaMQTTEntity(Thread):
             if not self.tuya_connected or self.needs_reset:
                 self.tuya_reset() 
 
-            data = self.tuya_connection.status()
+            data = self.tuya.status()
 
-            if data == b'':
-                self.needs_reset = True 
-                self.status()
-                return
-
-            if type(data) is bytes:
-                self.tuya_reset()               
+            if not data:
                 self.status()
                 return
         
@@ -140,27 +140,14 @@ class TuyaMQTTEntity(Thread):
 
     def set_status(self, dps_item, payload):
 
-        data = None
         try:  
             if not self.tuya_connected or self.needs_reset:
                 self.tuya_reset() 
 
-            data = self.tuya_connection.set_status(payload, dps_item)
+            data = self.tuya.set_status(payload, dps_item)
 
-            if type(data) is bytes:
-                self.tuya_reset()    
-                self.set_status(dps_item, payload)
-                return
-
-            if dps_item not in data['dps']:
-                data = self.status(False)
-        
-            bpayload = self.bool_payload(data['dps'][dps_item])
-
-            self.mqtt_client.publish("%s/%s/state" % (self.key, dps_item), bpayload)
-            self.mqtt_client.publish("%s/attr" % (self.key), json.dumps(data['dps']))
             self.parent.set_entity_dps_item(self.key, dps_item, payload) 
-            
+            self.status()
         except Exception as ex:
             print(ex, 'set_status for', self.key, data)
 
@@ -169,8 +156,7 @@ class TuyaMQTTEntity(Thread):
 
         time_run_availability = 0
         time_run_status = 0
-        time_unset_reset = 0       
-        self.mqtt_connect()
+        time_unset_reset = 0  
 
         while True:  
 
@@ -186,8 +172,7 @@ class TuyaMQTTEntity(Thread):
 
             if time.time() > time_run_availability:               
                 time_run_availability = time.time()+15               
-                self.mqtt_client.publish("%s/availability" % self.key, self.bool_availability(self.availability))                
-                # print(self.key,"i am up")
+                self.mqtt_client.publish("%s/availability" % self.key, self.bool_availability(self.availability))  
 
             if time.time() > time_unset_reset: 
                 time_unset_reset = time.time()+60                     
@@ -195,23 +180,10 @@ class TuyaMQTTEntity(Thread):
 
             time.sleep(self.delay)            
 
-
-    def connack_string(self, state):
-
-        states = [
-            'Connection successful',
-            'Connection refused - incorrect protocol version',
-            'Connection refused - invalid client identifier',
-            'Connection refused - server unavailable',
-            'Connection refused - bad username or password',
-            'Connection refused - not authorised'
-        ]
-        return states[state]
-
-
+   
     def on_connect(self, client, userdata, flags, rc):
 
-        print("MQTT Connection state: %s for %s" % (self.connack_string(rc), self.mqtt_topic))
+        print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
         client.subscribe("%s/#" % self.mqtt_topic)
         self.mqtt_connected = True
 
@@ -244,25 +216,13 @@ class TuyaMQTT:
             self.mqtt_client.loop_start()   
             self.mqtt_client.on_message = self.on_message
         except Exception as ex:
-            print('Failed to connect to MQTT Broker')
+            print('Failed to connect to MQTT Broker', ex)
             self.mqtt_connected = False
-
-    def connack_string(self, state):
-
-        states = [
-            'Connection successful',
-            'Connection refused - incorrect protocol version',
-            'Connection refused - invalid client identifier',
-            'Connection refused - server unavailable',
-            'Connection refused - bad username or password',
-            'Connection refused - not authorised'
-        ]
-        return states[state]
-
+   
 
     def on_connect(self, client, userdata, flags, rc):
 
-        print("MQTT Connection state: %s for %s" % (self.connack_string(rc), self.mqtt_topic))
+        print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
         client.subscribe("%s/#" % self.mqtt_topic)
         self.mqtt_connected = True
 

@@ -58,7 +58,7 @@ services:
     working_dir: /usr/src/app    
     volumes:
       - ./config:/usr/src/app/config    
-    command: "python main.py"
+    command: "python -u main.py"
     restart: always
     network_mode: host
 ```
@@ -120,17 +120,20 @@ switch:
     name: "Living Socket Left 1"
     command_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/command"  
     state_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/state"
-    availability_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/availability"
+    json_attributes_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/attr"
+    availability_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/availability"
   - platform: mqtt
     name: "Living Socket Left 2"
     command_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/1/command"
     state_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/1/state"
-    availability_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/1/availability"
+    json_attributes_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/attr"
+    availability_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/availability"
   - platform: mqtt
     name: "Living Socket Right 1"
     command_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/1/command" 
     state_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/1/state"
-    availability_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/1/availability"
+    json_attributes_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/attr"
+    availability_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/availability"
 ```
 - Note: availability only works for devices known by TuyaMQTT.
 
@@ -146,3 +149,4 @@ TODO
 License
 ====================
 Free to use, copy, modify, what ever you like.
+
