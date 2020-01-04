@@ -1,6 +1,6 @@
 init:
 	rm -rf pythontuya
-	git clone https://github.com/TradeFace/python-tuya.git pythontuya
+	git clone https://github.com/TradeFace/tuya.git tuya
 	pip3 install -r requirements.txt
 
 install:
@@ -11,5 +11,5 @@ install:
 
 docker:
 	rm -rf pythontuya
-	git clone https://github.com/TradeFace/python-tuya.git pythontuya
+	git clone https://github.com/TradeFace/tuya.git tuya
 	docker build -t tuyamqtt .
