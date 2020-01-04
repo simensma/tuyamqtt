@@ -140,11 +140,14 @@ switch:
 TODO
 ===================
 - check config values
-- remove entities after x fails?
 - device config via topic is rather crude
   - simple interface?
   - file / sqlite ?
-- pytuya is a mess, clean up / rewrite?
+
+Changelog
+==================
+- thread per device
+- pytuya replaced by https://github.com/TradeFace/tuya
 
 License
 ====================
