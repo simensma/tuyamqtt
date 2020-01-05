@@ -127,7 +127,6 @@ class TuyaMQTTEntity(Thread):
             data = self.tuya_client.status()
 
             if not data:
-                # self.status()
                 return
        
             for dps_key, dps_item in data['dps'].items():
@@ -154,15 +153,11 @@ class TuyaMQTTEntity(Thread):
                 self.status()
                 return
 
-            for dps_key, dps_item in data['dps'].items():
-   
+            for dps_key, dps_item in data['dps'].items():   
                 self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  self.bool_payload(dps_item))   
-                self.parent.set_entity_dps_item(self.key, dps_key, dps_item)    
-            
+                self.parent.set_entity_dps_item(self.key, dps_key, dps_item)   
          
-            self.mqtt_client.publish("%s/attr" % (self.key),  json.dumps(data['dps']))
-            self.parent.set_entity_dps_item(self.key, dps_item, payload) 
-
+            self.mqtt_client.publish("%s/attr" % (self.key),  json.dumps(data['dps']))  
 
         except Exception as ex:
             print(ex, 'set_status for', self.key)
