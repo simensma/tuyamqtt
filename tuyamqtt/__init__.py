@@ -106,11 +106,9 @@ class TuyaMQTTEntity(Thread):
         self.set_status(dps_item, self.payload_bool(message.payload))
 
 
-    def status(self, publish = True):
+    def status(self):
             
         try:
-       
-
             data = tuya.status(self.tuya_connection, self.entity)
 
             if not data:
@@ -132,8 +130,6 @@ class TuyaMQTTEntity(Thread):
     def set_status(self, dps_item, payload):
 
         try:  
-           
-
             data = tuya.set_status(self.tuya_connection, self.entity, dps_item, payload)
             if data == None:
                 self.status()
@@ -164,8 +160,6 @@ class TuyaMQTTEntity(Thread):
                 continue
             if not self.tuya_connected:
                 self.tuya_connect()
-                time.sleep(1)
-                continue
 
             if time.time() > time_run_status:   
                 self.status()
