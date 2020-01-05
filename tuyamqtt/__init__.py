@@ -6,6 +6,8 @@ import tuya.client as tuya
 from os import path
 from threading import Thread
 
+# from tuya.client import status, set_status, TuyaConnection
+
 def connack_string(state):
 
     states = [
@@ -28,12 +30,14 @@ class TuyaMQTTEntity(Thread):
         self.key = key
         self.mqtt_topic = key
         self.entity = entity
+
         self.parent = parent
         self.config = self.parent.config
         self.tuya_connected = False
         self.tuya = None
         self.needs_reset = False
         self.mqtt_connected = False
+        self.tuya_connect()
 
 
     def mqtt_connect(self): 
@@ -54,32 +58,16 @@ class TuyaMQTTEntity(Thread):
     def tuya_connect(self):
         
         try:
-            # self.tuya_client = pytuya.Device(self.entity['id'], self.entity['ip'], self.entity['localkey'])
-            self.tuya_client = tuya.Client()
-            self.tuya_client.connect(self.entity['ip'], self.entity['id'], self.entity['localkey'])
-
-            if self.entity['protocol'] == '3.3':
-                self.tuya_client.set_version(3.3)
-            
-            self.tuya_client.on_connect = self.on_connect_tuya
-            # self.tuya_client.loop_start()   
-            # self.tuya_client.on_message = self.on_message
-
+        
+            self.tuya_connection = tuya.TuyaConnection(self.entity)
             self.availability = True
-            self.tuya_connected = True
+            self.tuya_connected = self.tuya_connection.connected
 
         except Exception as ex:
             print(ex, 'for', self.key)
             self.availability = False
             self.tuya_connected = False
-        
-   
-    def tuya_reset(self):
-        return
-        del self.tuya_client
-        self.tuya_connect()
-        time.sleep(1)
-
+           
 
     def payload_bool(self, payload):
 
@@ -121,10 +109,9 @@ class TuyaMQTTEntity(Thread):
     def status(self, publish = True):
             
         try:
-            if not self.tuya_connected:
-                self.tuya_connect() 
+       
 
-            data = self.tuya_client.status()
+            data = tuya.status(self.tuya_connection, self.entity)
 
             if not data:
                 return
@@ -145,10 +132,9 @@ class TuyaMQTTEntity(Thread):
     def set_status(self, dps_item, payload):
 
         try:  
-            if not self.tuya_connected:
-                self.tuya_connect() 
+           
 
-            data = self.tuya_client.set_status(dps_item, payload)
+            data = tuya.set_status(self.tuya_connection, self.entity, dps_item, payload)
             if data == None:
                 self.status()
                 return
