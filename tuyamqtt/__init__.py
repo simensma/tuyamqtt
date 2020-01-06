@@ -1,12 +1,10 @@
 import time
 import paho.mqtt.client as mqtt
 import json
-# import pythontuya.pytuya as pytuya
 import tuya
 from os import path
 from threading import Thread
 
-# from tuya.client import status, set_status, TuyaConnection
 
 def connack_string(state):
 
@@ -32,10 +30,7 @@ class TuyaMQTTEntity(Thread):
         self.entity = entity
 
         self.parent = parent
-        self.config = self.parent.config
-        self.tuya_connected = False
-        self.tuya = None
-        self.needs_reset = False
+        self.config = self.parent.config       
         self.mqtt_connected = False
 
 
@@ -165,11 +160,6 @@ class TuyaMQTTEntity(Thread):
         print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
         client.subscribe("%s/#" % self.mqtt_topic)
         self.mqtt_connected = True
-
-    def on_connect_tuya(self):
-
-        print("Tuya Connection state:  for %s" % (self.key))
-        self.tuya_connected = True
 
 
 class TuyaMQTT:
