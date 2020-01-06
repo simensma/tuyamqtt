@@ -2,7 +2,7 @@ import time
 import paho.mqtt.client as mqtt
 import json
 # import pythontuya.pytuya as pytuya
-import tuya.client as tuya
+import tuya
 from os import path
 from threading import Thread
 
@@ -37,7 +37,6 @@ class TuyaMQTTEntity(Thread):
         self.tuya = None
         self.needs_reset = False
         self.mqtt_connected = False
-        self.tuya_connect()
 
 
     def mqtt_connect(self): 
@@ -54,20 +53,6 @@ class TuyaMQTTEntity(Thread):
             print('Failed to connect to MQTT Broker', ex)
             self.mqtt_connected = False
 
-
-    def tuya_connect(self):
-        
-        try:
-        
-            self.tuya_connection = tuya.TuyaConnection(self.entity)
-            self.availability = True
-            self.tuya_connected = self.tuya_connection.connected
-
-        except Exception as ex:
-            print(ex, 'for', self.key)
-            self.availability = False
-            self.tuya_connected = False
-           
 
     def payload_bool(self, payload):
 
@@ -109,9 +94,10 @@ class TuyaMQTTEntity(Thread):
     def status(self):
             
         try:
-            data = tuya.status(self.tuya_connection, self.entity)
+            data = tuya.status(self.entity)
 
             if not data:
+                self.availability = False
                 return
        
             for dps_key, dps_item in data['dps'].items():
@@ -130,7 +116,7 @@ class TuyaMQTTEntity(Thread):
     def set_status(self, dps_item, payload):
 
         try:  
-            data = tuya.set_status(self.tuya_connection, self.entity, dps_item, payload)
+            data = tuya.set_status(self.entity, dps_item, payload)
             if data == None:
                 self.status()
                 return
@@ -156,10 +142,7 @@ class TuyaMQTTEntity(Thread):
 
             if not self.mqtt_connected:
                 self.mqtt_connect()
-                time.sleep(1)
-                continue
-            if not self.tuya_connected:
-                self.tuya_connect()
+                time.sleep(1)         
 
             if time.time() > time_run_status:   
                 self.status()
