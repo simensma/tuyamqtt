@@ -8,8 +8,9 @@ Quick Example
 ```
 tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/1/state
 tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/1/command
+tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/1/attributes
 tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/availability
-tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/attr
+tuya/3.3/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/attributes
 ```
 
 Installation 
@@ -68,7 +69,8 @@ MQTT Topics
 ```
 tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/state
 tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/command
-tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/attr
+tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/<dps>/attributes
+tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/attributes
 tuya/<protocol>/<device-id>/<device-localkey>/<device-ip>/availability
 ```
 
@@ -82,9 +84,13 @@ MQTT command
 --------------
 Valid values are `true`, `ON`, `1`, `false`, `OFF`, `0`
 
+MQTT dps attributes
+--------------
+Returns dps state, via state and timestamp
+
 MQTT attributes
 --------------
-Returns all device attributes. Updates on command, or on state change on device (5 second polling)
+Returns all device attributes, via state and timestamp. Updates on command, or on state change on device (5 second polling)
 
 MQTT availability
 --------------
@@ -92,6 +98,11 @@ Availability payload values can be set in tuyamqtt.conf. Updates every 15 second
 
 - Default values: `online`, `offline`.
 
+Via state
+-----------
+The via state can be used in your home automation system. i.e. a state change with via `tuya` could be a strong indication of presence 
+Returns `mqtt` when a state change comes in via a mqtt-request 
+Returns `tuya` when a state change is detected in status polling 
 
 tuyamqtt.conf
 ==============
@@ -120,19 +131,19 @@ switch:
     name: "Living Socket Left 1"
     command_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/command"  
     state_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/state"
-    json_attributes_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/attr"
+    json_attributes_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/1/attributes"
     availability_topic: "tuya/3.3/34280100500194d17c95/e7e9339dd82abe61/192.168.1.50/availability"
   - platform: mqtt
     name: "Living Socket Left 2"
     command_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/1/command"
     state_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/1/state"
-    json_attributes_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/attr"
+    json_attributes_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/attributes"
     availability_topic: "tuya/3.3/347550642cf432a2cbaf/314c6b7f3f44f979/192.168.1.51/availability"
   - platform: mqtt
     name: "Living Socket Right 1"
     command_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/1/command" 
     state_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/1/state"
-    json_attributes_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/attr"
+    json_attributes_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/attributes"
     availability_topic: "tuya/3.3/347550712cf432a2b04a/f9b80165db5e06bd/192.168.1.54/availability"
 ```
 - Note: availability only works for devices known by TuyaMQTT.
@@ -146,6 +157,7 @@ TODO
 
 Changelog
 ==================
+- added via mqtt/tuya
 - thread per device
 - pytuya replaced by https://github.com/TradeFace/tuya
 

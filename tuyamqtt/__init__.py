@@ -18,6 +18,31 @@ def connack_string(state):
     ]
     return states[state]
 
+
+def payload_bool(payload:str):
+
+        str_payload = str(payload.decode("utf-8"))
+        if str_payload == 'True' or str_payload == 'ON' or str_payload == '1':
+            return True       
+        elif str_payload == 'False' or str_payload == 'OFF' or str_payload == '0':
+            return False    
+        return payload
+
+
+def bool_payload(config:dict, boolvalue:bool):
+
+    if boolvalue:
+        return config['General']['payload_on']
+    return config['General']['payload_off']
+
+
+def bool_availability(config:dict, boolvalue:bool):
+
+    if boolvalue:
+        return config['General']['availability_online']
+    return config['General']['availability_offline']
+
+
 class TuyaMQTTEntity(Thread):
 
     delay = 0.1
@@ -49,30 +74,6 @@ class TuyaMQTTEntity(Thread):
             self.mqtt_connected = False
 
 
-    def payload_bool(self, payload):
-
-        str_payload = str(payload.decode("utf-8"))
-        if str_payload == 'True' or str_payload == 'ON' or str_payload == '1':
-            return True       
-        elif str_payload == 'False' or str_payload == 'OFF' or str_payload == '0':
-            return False    
-        return payload
-
-
-    def bool_payload(self, boolvalue):
-
-        if boolvalue:
-            return self.config['General']['payload_on']
-        return self.config['General']['payload_off']
-
-
-    def bool_availability(self, boolvalue):
-
-        if boolvalue:
-            return self.config['General']['availability_online']
-        return self.config['General']['availability_offline']
-
-
     def on_message(self, client, userdata, message):      
 
         if message.topic[-7:] != 'command':
@@ -81,12 +82,45 @@ class TuyaMQTTEntity(Thread):
         print("topic",message.topic,"retained",message.retain,"message received",str(message.payload.decode("utf-8")))
 
         entityParts = message.topic.split("/")  
-        dps_item = str(entityParts[5])
+        dps_key = str(entityParts[5])
 
-        self.set_status(dps_item, self.payload_bool(message.payload))
+        if dps_key not in self.entity['via']:
+            self._set_via(dps_key, 'mqtt')
+        self.set_status(dps_key, payload_bool(message.payload))
 
 
-    def status(self):
+    def _set_via(self, dps_key, via:str):
+
+        self.entity['via'][dps_key] = via
+        self.parent.set_entity_via_item(self.key, dps_key, via) 
+
+
+    def _process_data(self, data:dict, via:str):
+
+        for dps_key, dps_value in data['dps'].items():
+            self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  bool_payload(self.config, dps_value))   
+                
+            if dps_key in self.entity['dps'] and dps_value != self.entity['dps'][dps_key]:
+                if dps_key in self.entity['via'] and via != self.entity['via'][dps_key]:
+                    # print("status changed via ",via,  dps_value , self.entity)                          
+                    self._set_via(dps_key, via)
+            self.parent.set_entity_dps_item(self.key, dps_key, dps_value) 
+            attr_item = {
+                'dps': self.entity['dps'][dps_key], 
+                'via': via if dps_key not in self.entity['via'] else self.entity['via'][dps_key],
+                'time': time.time()
+            }
+            self.mqtt_client.publish("%s/%s/attributes" % (self.key, dps_key),  json.dumps(attr_item))
+        
+        attr = {
+            'dps': self.entity['dps'], 
+            'via': self.entity['via'],
+            'time': time.time()
+        } 
+        self.mqtt_client.publish("%s/attributes" % (self.key),  json.dumps(attr))
+
+
+    def status(self, via:str = 'tuya'):
             
         try:
             data = tuya.status(self.entity)
@@ -95,11 +129,7 @@ class TuyaMQTTEntity(Thread):
                 self.availability = False
                 return
        
-            for dps_key, dps_item in data['dps'].items():
-                self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  self.bool_payload(dps_item))   
-                self.parent.set_entity_dps_item(self.key, dps_key, dps_item)    
-            
-            self.mqtt_client.publish("%s/attr" % (self.key),  json.dumps(data['dps']))
+            self._process_data(data, via)
 
             self.availability = True
 
@@ -111,20 +141,16 @@ class TuyaMQTTEntity(Thread):
     def set_status(self, dps_item, payload):
 
         try:  
-            data = tuya.set_status(self.entity, dps_item, payload)
+            data = tuya.set_status(self.entity, dps_item, payload)            
+            
             if data == None:
-                self.status()
+                self.status('mqtt')
                 return
 
-            for dps_key, dps_item in data['dps'].items():   
-                self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  self.bool_payload(dps_item))   
-                self.parent.set_entity_dps_item(self.key, dps_key, dps_item)   
-         
-            self.mqtt_client.publish("%s/attr" % (self.key),  json.dumps(data['dps']))  
+            self._process_data(data, 'mqtt')
 
         except Exception as ex:
             print(ex, 'set_status for', self.key)
-
 
 
     def run(self):
@@ -146,7 +172,7 @@ class TuyaMQTTEntity(Thread):
 
             if time.time() > time_run_availability:               
                 time_run_availability = time.time()+15               
-                self.mqtt_client.publish("%s/availability" % self.key, self.bool_availability(self.availability))                
+                self.mqtt_client.publish("%s/availability" % self.key, bool_availability(self.config, self.availability))                
       
             if time.time() > time_unset_reset: 
                 time_unset_reset = time.time()+60                     
@@ -234,6 +260,7 @@ class TuyaMQTT:
             'localkey': entityParts[3],
             'ip': entityParts[4],
             'dps': {},
+            'via': {},
         }
 
         self.dictOfEntities[key] = entity
@@ -247,7 +274,12 @@ class TuyaMQTT:
 
     def set_entity_dps_item(self, key, dps, value):
 
-        self.dictOfEntities[key]['dps'][dps] = value
+        self.dictOfEntities[key]['dps'][dps] = value       
+
+
+    def set_entity_via_item(self, key, dps, value):
+
+        self.dictOfEntities[key]['via'][dps] = value
     
 
     def on_message(self, client, userdata, message):                   
