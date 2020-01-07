@@ -57,6 +57,8 @@ class TuyaMQTTEntity(Thread):
         self.parent = parent
         self.config = self.parent.config       
         self.mqtt_connected = False
+        self.availability = False
+        self.availability_changed = False
 
 
     def mqtt_connect(self): 
@@ -84,40 +86,59 @@ class TuyaMQTTEntity(Thread):
         entityParts = message.topic.split("/")  
         dps_key = str(entityParts[5])
 
+        if dps_key not in self.entity['dps']:
+            self._set_dps(dps_key, None)
         if dps_key not in self.entity['via']:
             self._set_via(dps_key, 'mqtt')
         self.set_status(dps_key, payload_bool(message.payload))
 
+    def _set_dps(self, dps_key, dps_value:str):
+
+        self.entity['dps'][dps_key] = dps_value
+        self.parent.set_entity_dps_item(self.key, dps_key, dps_value) 
 
     def _set_via(self, dps_key, via:str):
 
         self.entity['via'][dps_key] = via
         self.parent.set_entity_via_item(self.key, dps_key, via) 
 
+    def _set_availability(self, availability):
+
+        if availability != self.availability:
+            self.availability = availability
+            self.availability_changed = True
 
     def _process_data(self, data:dict, via:str):
 
+        changed = False
+
         for dps_key, dps_value in data['dps'].items():
-            self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  bool_payload(self.config, dps_value))   
+            if dps_key not in self.entity['dps']:
+                self._set_dps(dps_key, None)
+            if dps_key not in self.entity['via']:
+                self._set_via(dps_key, 'init')
+            if dps_value != self.entity['dps'][dps_key]:
+                changed = True
+                self._set_dps(dps_key, dps_value)                
+                self.mqtt_client.publish("%s/%s/state" % (self.key, dps_key),  bool_payload(self.config, dps_value))  
                 
-            if dps_key in self.entity['dps'] and dps_value != self.entity['dps'][dps_key]:
-                if dps_key in self.entity['via'] and via != self.entity['via'][dps_key]:
-                    # print("status changed via ",via,  dps_value , self.entity)                          
+                if via != self.entity['via'][dps_key]:                        
                     self._set_via(dps_key, via)
-            self.parent.set_entity_dps_item(self.key, dps_key, dps_value) 
-            attr_item = {
-                'dps': self.entity['dps'][dps_key], 
-                'via': via if dps_key not in self.entity['via'] else self.entity['via'][dps_key],
-                'time': time.time()
-            }
-            self.mqtt_client.publish("%s/%s/attributes" % (self.key, dps_key),  json.dumps(attr_item))
+                
+                attr_item = {
+                    'dps': self.entity['dps'][dps_key], 
+                    'via': self.entity['via'][dps_key],
+                    'time': time.time()
+                }
+                self.mqtt_client.publish("%s/%s/attributes" % (self.key, dps_key),  json.dumps(attr_item))
         
-        attr = {
-            'dps': self.entity['dps'], 
-            'via': self.entity['via'],
-            'time': time.time()
-        } 
-        self.mqtt_client.publish("%s/attributes" % (self.key),  json.dumps(attr))
+        if changed:
+            attr = {
+                'dps': self.entity['dps'], 
+                'via': self.entity['via'],
+                'time': time.time()
+            } 
+            self.mqtt_client.publish("%s/attributes" % (self.key),  json.dumps(attr))
 
 
     def status(self, via:str = 'tuya'):
@@ -126,16 +147,16 @@ class TuyaMQTTEntity(Thread):
             data = tuya.status(self.entity)
 
             if not data:
-                self.availability = False
+                self._set_availability(False)
                 return
        
             self._process_data(data, via)
 
-            self.availability = True
+            self._set_availability(True)
 
         except Exception as ex:
             print(ex, 'status for', self.key)
-            self.availability = False
+            self._set_availability(False)
 
 
     def set_status(self, dps_item, payload):
@@ -157,7 +178,7 @@ class TuyaMQTTEntity(Thread):
 
         time_run_availability = 0
         time_run_status = 0
-        time_unset_reset = 0  
+        # time_unset_reset = 0  
 
         while True:  
 
@@ -171,12 +192,14 @@ class TuyaMQTTEntity(Thread):
                 time_run_status = time.time()+5
 
             if time.time() > time_run_availability:               
-                time_run_availability = time.time()+15               
-                self.mqtt_client.publish("%s/availability" % self.key, bool_availability(self.config, self.availability))                
+                time_run_availability = time.time()+15    
+                if self.availability_changed:           
+                    self.mqtt_client.publish("%s/availability" % self.key, bool_availability(self.config, self.availability)) 
+                    self.availability_changed = False               
       
-            if time.time() > time_unset_reset: 
-                time_unset_reset = time.time()+60                     
-                self.needs_reset = False
+            # if time.time() > time_unset_reset: 
+            #     time_unset_reset = time.time()+60                     
+            #     self.needs_reset = False
 
             time.sleep(self.delay)            
 
