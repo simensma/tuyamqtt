@@ -1,7 +1,7 @@
 import sqlite3
 import json
 
-db = sqlite3.connect('tuyamqtt.db', check_same_thread=False)
+db = sqlite3.connect('./config/tuyamqtt.db', check_same_thread=False)
 cursor = db.cursor()
 
 def disconnect():
