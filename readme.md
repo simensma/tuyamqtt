@@ -148,18 +148,23 @@ switch:
 ```
 - Note: availability only works for devices known by TuyaMQTT.
 
+
 TODO
 ===================
 - check config values
 - device config via topic is rather crude
   - simple interface?
-  - file / sqlite ?
+- set https://www.home-assistant.io/docs/mqtt/discovery/
+
 
 Changelog
 ==================
+- replaced entities.json with sqlite db
+- only publish onchange
 - added via mqtt/tuya
 - thread per device
 - pytuya replaced by https://github.com/TradeFace/tuya
+
 
 License
 ====================
