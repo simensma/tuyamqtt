@@ -111,9 +111,9 @@ class TuyaMQTTEntity(Thread):
             self.availability = availability
             self.availability_changed = True
 
-    def _process_data(self, data:dict, via:str):
+    def _process_data(self, data:dict, via:str, force_mqtt:bool = False):
 
-        changed = False
+        changed = force_mqtt
         
         for dps_key, dps_value in data['dps'].items():
             # print("_process_data",self.entity['attributes']['dps'][dps_key], dps_key, dps_value)
@@ -121,7 +121,7 @@ class TuyaMQTTEntity(Thread):
                 self._set_dps(dps_key, None)
             if dps_key not in self.entity['attributes']['via']:
                 self._set_via(dps_key, 'init')
-            if dps_value != self.entity['attributes']['dps'][dps_key]:
+            if dps_value != self.entity['attributes']['dps'][dps_key] or force_mqtt:
                 changed = True
                 self._set_dps(dps_key, dps_value)                
                 self.mqtt_client.publish("%s/%s/state" % (self.mqtt_topic, dps_key),  bool_payload(self.config, dps_value))  
@@ -146,7 +146,7 @@ class TuyaMQTTEntity(Thread):
             self.mqtt_client.publish("%s/attributes" % (self.mqtt_topic),  json.dumps(attr))
 
 
-    def status(self, via:str = 'tuya'):
+    def status(self, via:str = 'tuya', force_mqtt:bool = False):
             
         try:
             data = tuya.status(self.entity)
@@ -155,7 +155,7 @@ class TuyaMQTTEntity(Thread):
                 self._set_availability(False)
                 return
        
-            self._process_data(data, via)
+            self._process_data(data, via, force_mqtt)
             self._set_availability(True)
 
         except Exception as ex:
@@ -166,13 +166,14 @@ class TuyaMQTTEntity(Thread):
     def set_status(self, dps_item, payload):
         # print('set_status')
         try:  
+            timer = time.time()
             data = tuya.set_status(self.entity, dps_item, payload)            
-            # print(self.mqtt_topic, data)
+            # print(self.mqtt_topic,data, time.time()-timer)
             if data == None:
-                self.status('mqtt')
+                self.status('mqtt', True)
                 return
 
-            self._process_data(data, 'mqtt')
+            self._process_data(data, 'mqtt', True)
 
         except Exception as ex:
             print(ex, 'set_status for', self.mqtt_topic)
