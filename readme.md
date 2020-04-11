@@ -175,7 +175,7 @@ TODO
 - check config values
 - device config via topic is rather crude
   - simple interface?
-- set https://www.home-assistant.io/docs/mqtt/discovery/
+- implement https://www.home-assistant.io/docs/mqtt/discovery/
 
 
 Changelog
@@ -186,8 +186,11 @@ Changelog
 - thread per device
 - pytuya replaced by https://github.com/TradeFace/tuya
 
+Acknowledgements
+=================
+- https://github.com/SDNick484 for testing protocol 3.1 reimplementation
 
 License
 ====================
-Free to use, copy, modify, what ever you like.
+Free to use, copy, modify, whatever you like.
 
