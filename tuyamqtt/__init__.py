@@ -4,7 +4,7 @@ import json
 import tuya
 from os import path
 from threading import Thread
-import tuyamqtt.database as database
+import database as database
 
 def connack_string(state):
 
@@ -156,11 +156,11 @@ class TuyaMQTTEntity(Thread):
                 return
        
             self._process_data(data, via, force_mqtt)
-            self._set_availability(True)
+            #self._set_availability(True)
 
         except Exception as ex:
             print(ex, 'status for', self.mqtt_topic)
-            self._set_availability(False)
+            #self._set_availability(False)
 
 
     def set_status(self, dps_item, payload):
@@ -178,12 +178,36 @@ class TuyaMQTTEntity(Thread):
         except Exception as ex:
             print(ex, 'set_status for', self.mqtt_topic)
 
+    def hass_discovery(self):
+
+        hass_topic = 'homeassistant/%s/%s'
+
+        dps = 1
+        payload = {
+            "name": "name here",
+            "cmd_t": "~command",
+            "stat_t": "~state",
+            "val_tpl":"{{value_json.POWER}}",
+            "pl_off": self.config['General']['payload_off'],
+            "pl_on": self.config['General']['payload_off'],
+            "avty_t":"~availability",
+            "pl_avail": self.config['General']['availability_online'],
+            "pl_not_avail": self.config['General']['availability_offline'],
+            "uniq_id": '%s_%s' % (self.entity['deviceid'], dps),
+            "device":{
+                "identifiers":[self.entity['deviceid']],
+                "connections":[["mac", "D8:F1:5B:8C:60:4F"]]
+            },
+            "~": self.mqtt_topic
+        }
+        print(payload)
 
     def run(self):
 
         time_run_availability = 0
         time_run_status = 0
         # time_unset_reset = 0  
+        # self.hass_discovery()
 
         while True:  
 
@@ -192,19 +216,12 @@ class TuyaMQTTEntity(Thread):
                 time.sleep(1)         
 
             if time.time() > time_run_status:   
-                self.status()
-                
-                time_run_status = time.time()+self.entity['status_poll']
+                self.status()                
+                time_run_status = time.time()+self.entity['status_poll']                
 
             if time.time() > time_run_availability:               
-                time_run_availability = time.time()+15    
-                if self.availability_changed:           
-                    self.mqtt_client.publish("%s/availability" % self.mqtt_topic, bool_availability(self.config, self.availability)) 
-                    self.availability_changed = False               
-      
-            # if time.time() > time_unset_reset: 
-            #     time_unset_reset = time.time()+60                     
-            #     self.needs_reset = False
+                time_run_availability = time.time()+15        
+                self.mqtt_client.publish("%s/availability" % self.mqtt_topic, bool_availability(self.config, self.availability))         
 
             time.sleep(self.delay)            
 
@@ -233,7 +250,9 @@ class TuyaMQTT:
         self.mqtt_connected = False
 
         self.database = database
-        self.database.setup()        
+        self.database.setup()  
+        #debug 3.1
+        # self.add_entity_dict('tuya/3.1/06200290b4e62d195a42/a52e118707bf530a/192.168.1.143', True)      
 
 
     def mqtt_connect(self): 

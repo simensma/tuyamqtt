@@ -148,6 +148,17 @@ switch:
 ```
 - Note: availability only works for devices known by TuyaMQTT.
 
+Testing with Mosquitto
+========================
+Use mosquitto_pub to make TuyaMQTT aware of the device. TuyaMQTT needs a topic ending with `command` to discover a device
+```mosquitto_pub -t tuya/3.1/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/1/command -m ON``` 
+
+And run mosquitto_sub to listen to updates (in another terminal). 
+```mosquitto_sub -t tuya/3.1/34280100600194d17c96/e7e9339aa82abe61/192.168.1.50/#```
+
+It might take a few seconds to get a state update. 
+
+Note: that TuyaMQTT only pushes status message when the was a change. The availability topic should be published every 15 sec. 
 
 TODO
 ===================

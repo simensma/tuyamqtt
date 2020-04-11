@@ -4,3 +4,5 @@ config/entities.json
 pythontuya
 tuya
 tuyamqtt.db
+node_modules
+web/node_modules

@@ -10,11 +10,36 @@ def disconnect():
 def setup():
     
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS entities (id INTEGER PRIMARY KEY, deviceid TEXT unique,
-                        localkey TEXT, ip TEXT, protocol TEXT, topic TEXT, attributes TEXT, status_poll FLOAT, hass_discover BOOL)
+        CREATE TABLE IF NOT EXISTS entities (
+            id INTEGER PRIMARY KEY, 
+            deviceid TEXT unique,
+            localkey TEXT, 
+            ip TEXT, 
+            protocol TEXT, 
+            topic TEXT, 
+            attributes TEXT, 
+            status_poll FLOAT, 
+            status_command INTEGER
+            hass_discover BOOL,
+            name TEXT
+        )
     ''')  
     cursor.execute('''
-        CREATE TABLE IF NOT EXISTS settings (id INTEGER PRIMARY KEY, name TEXT unique, value TEXT)
+        CREATE TABLE IF NOT EXISTS attributes (
+            id INTEGER PRIMARY KEY, 
+            entity_id INTEGER,
+            dpsitem INTEGER,
+            dpsvalue FLOAT,
+            dpstype TEXT,
+            via TEXT
+        )
+    ''') 
+    cursor.execute('''
+        CREATE TABLE IF NOT EXISTS settings (
+            id INTEGER PRIMARY KEY, 
+            name TEXT unique, 
+            value TEXT
+        )
     ''')  
     db.commit()
 
@@ -69,7 +94,7 @@ def get_entities():
             'topic': row[5],
             'attributes': json.loads(row[6]),
             'status_poll': row[7],
-            'hass_discover': row[8]
+            # 'hass_discover': row[8]
         }
         dictOfEntities[row[1]] = entity
     # print(dictOfEntities)
