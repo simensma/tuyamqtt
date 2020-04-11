@@ -10,6 +10,7 @@ if __name__ == '__main__':
 
     for x in sys.argv:      
         if x == '-v' or x == '-vv' or x == '-vvv':
+            print("setting debug to:",x)
             config['General']['debug'] = x       
 
     server = TuyaMQTT(config)

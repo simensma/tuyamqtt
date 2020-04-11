@@ -122,12 +122,14 @@ class TuyaMQTTEntity(Thread):
             if dps_key not in self.entity['attributes']['dps']:
                 self._set_dps(dps_key, None)
             if self.debuglevel >= 3:
-                print("_process_data",self.entity['attributes']['dps'][dps_key], dps_key, dps_value)
+                print("_process_data ", dps_key, dps_value)
             if dps_key not in self.entity['attributes']['via']:
                 self._set_via(dps_key, 'init')
             if dps_value != self.entity['attributes']['dps'][dps_key] or force_mqtt:
                 changed = True
-                self._set_dps(dps_key, dps_value)                
+                self._set_dps(dps_key, dps_value) 
+                if self.debuglevel >= 3:
+                    print("->publish %s/%s/state" % (self.mqtt_topic, dps_key))                
                 self.mqtt_client.publish("%s/%s/state" % (self.mqtt_topic, dps_key),  bool_payload(self.config, dps_value))  
                 
                 if via != self.entity['attributes']['via'][dps_key]:                        
@@ -138,6 +140,8 @@ class TuyaMQTTEntity(Thread):
                     'via': self.entity['attributes']['via'][dps_key],
                     'time': time.time()
                 }
+                if self.debuglevel >= 3:
+                    print("->publish %s/%s/attributes" % (self.mqtt_topic, dps_key)) 
                 self.mqtt_client.publish("%s/%s/attributes" % (self.mqtt_topic, dps_key),  json.dumps(attr_item))
                 # print("%s/%s/attributes" % (self.mqtt_topic, dps_key))
         
@@ -147,6 +151,8 @@ class TuyaMQTTEntity(Thread):
                 'via': self.entity['attributes']['via'],
                 'time': time.time()
             } 
+            if self.debuglevel >= 3:
+                    print("->publish %s/attributes" % (self.mqtt_topic))
             self.mqtt_client.publish("%s/attributes" % (self.mqtt_topic),  json.dumps(attr))
 
 
@@ -228,7 +234,9 @@ class TuyaMQTTEntity(Thread):
                     print('<-status poll '+self.entity['ip'])             
 
             if time.time() > time_run_availability:               
-                time_run_availability = time.time()+15        
+                time_run_availability = time.time()+15   
+                if self.debuglevel >= 3:
+                    print("->publish %s/availability" % self.mqtt_topic)     
                 self.mqtt_client.publish("%s/availability" % self.mqtt_topic, bool_availability(self.config, self.availability))         
 
             time.sleep(self.delay)            
