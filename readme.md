@@ -162,6 +162,14 @@ It might take a few seconds to get a state update.
 
 Note: that TuyaMQTT only pushes status message when there was a change. The availability topic should be published every 15 sec. 
 
+Debugging
+================
+```
+python3 -u main.py -v
+python3 -u main.py -vv
+python3 -u main.py -vvv
+```
+
 TODO
 ===================
 - check config values

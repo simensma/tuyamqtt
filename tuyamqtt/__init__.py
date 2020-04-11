@@ -58,7 +58,8 @@ class TuyaMQTTEntity(Thread):
         self.mqtt_topic = "tuya/%s/%s/%s/%s"%(entity['protocol'],entity['deviceid'],entity['localkey'],entity['ip'])
 
         self.parent = parent
-        self.config = self.parent.config       
+        self.config = self.parent.config   
+        self.debuglevel =  self.parent.debuglevel
         self.mqtt_connected = False
         self.availability = False
         self.availability_changed = False
@@ -84,7 +85,8 @@ class TuyaMQTTEntity(Thread):
         if message.topic[-7:] != 'command':
             return   
 
-        print("topic",message.topic,"retained",message.retain,"message received",str(message.payload.decode("utf-8")))
+        if self.debuglevel >= 1:
+            print("topic",message.topic,"retained",message.retain,"message received",str(message.payload.decode("utf-8")))
 
         entityParts = message.topic.split("/")  
         dps_key = str(entityParts[5]) #will give problem with custom topics
@@ -116,9 +118,11 @@ class TuyaMQTTEntity(Thread):
         changed = force_mqtt
         
         for dps_key, dps_value in data['dps'].items():
-            # print("_process_data",self.entity['attributes']['dps'][dps_key], dps_key, dps_value)
+            
             if dps_key not in self.entity['attributes']['dps']:
                 self._set_dps(dps_key, None)
+            if self.debuglevel >= 3:
+                print("_process_data",self.entity['attributes']['dps'][dps_key], dps_key, dps_value)
             if dps_key not in self.entity['attributes']['via']:
                 self._set_via(dps_key, 'init')
             if dps_value != self.entity['attributes']['dps'][dps_key] or force_mqtt:
@@ -156,11 +160,11 @@ class TuyaMQTTEntity(Thread):
                 return
        
             self._process_data(data, via, force_mqtt)
-            #self._set_availability(True)
+            self._set_availability(True)
 
         except Exception as ex:
             print(ex, 'status for', self.mqtt_topic)
-            #self._set_availability(False)
+            self._set_availability(False)
 
 
     def set_status(self, dps_item, payload):
@@ -216,8 +220,12 @@ class TuyaMQTTEntity(Thread):
                 time.sleep(1)         
 
             if time.time() > time_run_status:   
+                if self.debuglevel >= 2:
+                    print('->status poll '+self.entity['ip']) 
                 self.status()                
-                time_run_status = time.time()+self.entity['status_poll']                
+                time_run_status = time.time()+self.entity['status_poll']  
+                if self.debuglevel >= 2: 
+                    print('<-status poll '+self.entity['ip'])             
 
             if time.time() > time_run_availability:               
                 time_run_availability = time.time()+15        
@@ -228,7 +236,8 @@ class TuyaMQTTEntity(Thread):
    
     def on_connect(self, client, userdata, flags, rc):
 
-        print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
+        if self.debuglevel >= 1:
+            print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
         client.subscribe("%s/#" % self.mqtt_topic)
         self.mqtt_connected = True
 
@@ -248,6 +257,14 @@ class TuyaMQTT:
         self.entities_file = config['General']['entity_file']
         self.mqtt_topic = config['General']['topic']
         self.mqtt_connected = False
+
+        self.debuglevel = 0
+        if config['General']['debug'] == '-v':
+            self.debuglevel = 1
+        elif config['General']['debug'] == '-vv':
+            self.debuglevel = 2
+        elif config['General']['debug'] == '-vvv':
+            self.debuglevel = 3
 
         self.database = database
         self.database.setup()  
@@ -272,7 +289,8 @@ class TuyaMQTT:
 
     def on_connect(self, client, userdata, flags, rc):
 
-        print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
+        if self.debuglevel >= 1:
+            print("MQTT Connection state: %s for %s" % (connack_string(rc), self.mqtt_topic))
         client.subscribe("%s/#" % self.mqtt_topic)
         self.mqtt_connected = True
 
@@ -352,8 +370,9 @@ class TuyaMQTT:
         key = self.add_entity_dict(message.topic, message.retain)
 
         if key:
-            print("message received",str(message.payload.decode("utf-8")),\
-            "topic",message.topic,"retained",message.retain)    
+            if self.debuglevel >= 1:
+                print("message received",str(message.payload.decode("utf-8")),\
+                "topic",message.topic,"retained",message.retain)    
             entity = self.get_entity(key)
             
             myThreadOb1 = TuyaMQTTEntity(key, entity, self)     
